@@ -1,0 +1,35 @@
+- name: Create CSV file for package information
+  hosts: all
+  gather_facts: yes
+
+  tasks:
+    - name: Gather package facts
+      package_facts:
+      register: package_info
+
+    - name: Create CSV file package information
+      copy:
+        dest: ~/package_info.csv
+        content: |
+          {% for host in play_hosts | sort %}
+          {% for package in hostvars[host].package_info.ansible_facts.packages | default({})
+                              | dict2items
+                              | sort(attribute='key')
+                              | flatten(levels=1) %}
+          {{ host }},{{ package.key }}
+          {%- if include_version %},{{ package.value.0.version }}{% endif %}
+          {%- if include_release %},{{ package.value.0.release | default('N/A') }}{% endif %}
+          {%- if include_epoch %},{{ package.value.0.epoch | default('N/A') }}{% endif %}
+          {%- if include_arch %},{{ package.value.0.arch | default('N/A') }}{% endif %}
+          {%- if include_source %},{{ package.value.0.source | default('N/A') }}{% endif %}
+
+          {% endfor %}
+          {% endfor %}
+      delegate_to: localhost
+      run_once: yes
+      vars:
+        include_version: true
+        include_release: true
+        include_epoch: true
+        include_arch: true
+        include_source: true
